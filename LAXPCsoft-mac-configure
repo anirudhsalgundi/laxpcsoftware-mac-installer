@@ -1,0 +1,102 @@
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAXPCSOFT="$(dirname "$SCRIPT_DIR")/LAXPCsoftware22Aug15"
+
+if [ -z "$HEADAS" ]; then
+  echo "'$HEADAS' variable not found! HEASOFT not properly initialized. Please check your ~/.zshrc"
+  exit 1
+fi
+
+# ---------- Check for gcc ----------
+if ! command -v gcc &> /dev/null; then
+  echo "gcc not found. Installing via Homebrew..."
+  brew install gcc
+else
+  echo "gcc found: $(which gcc)"
+fi
+
+# Get timestamp for backup
+timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
+
+mv $LAXPCSOFT/gaina8.dat $LAXPCSOFT/gaina8.dat_$timestamp
+mv $LAXPCSOFT/LAXPC_CAL/BACK_CAL_Faint/gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL_Faint/gaina8.dat_$timestamp
+mv $LAXPCSOFT/LAXPC_CAL/response/gaina8.dat $LAXPCSOFT/LAXPC_CAL/response/gaina8.dat_$timestamp
+mv $LAXPCSOFT/LAXPC_CAL/gaina8.dat $LAXPCSOFT/LAXPC_CAL/gaina8.dat_$timestamp
+mv $LAXPCSOFT/LAXPC_CAL/BACK_CAL/gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL/gaina8.dat_$timestamp
+mv $LAXPCSOFT/LAXPC_CAL/BACK_CAL2/gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL2/gaina8.dat_$timestamp
+mv $LAXPCSOFT/LAXPC_CAL/BACK_CAL3/gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL3/gaina8.dat_$timestamp
+
+
+#update the gain file
+curl -O https://www.tifr.res.in/~astrosat_laxpc/LaxpcSoft_v1.0/gaina8.dat.tar
+
+# Get timestamp for backup
+tar -xvf gaina8.dat.tar
+cp gaina8.dat $LAXPCSOFT/LAXPC_CAL/response/gaina8.dat
+cp gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL_Faint/gaina8.dat
+cp gaina8.dat $LAXPCSOFT/LAXPC_CAL/gaina8.dat
+cp gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL/gaina8.dat
+cp gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL2/gaina8.dat
+cp gaina8.dat $LAXPCSOFT/LAXPC_CAL/BACK_CAL3/gaina8.dat
+
+
+
+export CPATH="/opt/homebrew/opt/zlib/include:$CPATH"
+export LIBRARY_PATH="/opt/homebrew/opt/zlib/lib:$LIBRARY_PATH"
+
+CFITSIO="$HEADAS/lib/libcfitsio.a"
+ZLIB_FLAGS="-L/opt/homebrew/opt/zlib/lib -lz"
+
+cd $LAXPCSOFT
+mkdir -p laxpc_bin
+
+cd $LAXPCSOFT/Fits_Event_make_V2_11Feb18
+gfortran *.f $CFITSIO $ZLIB_FLAGS -finit-local-zero -o ../laxpc_bin/laxpc_make_event -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Lightcurve_V1_15Jun17
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_lightcurve -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Spectrum_V1_15Jun17
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_spectra -Wl,-lcurl
+
+cd $LAXPCSOFT/GTI_make_V1_15Jun17
+gfortran make_gti.f write_keywords.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_stdgti -Wl,-lcurl
+gfortran make_gti_back.f write_keywords.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_occultgti -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_FreqLag_V1_15Jun17
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_find_freqlag -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Backspec_V1_15Aug22
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_backspectra -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Backlightcurve_V1_15Aug22
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_backlightcurve -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_rebin_power_V1_15Jun17
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_rebin_power -Wl,-lcurl
+
+cd $LAXPCSOFT/Dyn_power_V1_03Jul17
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_dynpower -Wl,-lcurl
+
+cd $LAXPCSOFT/Flux_resolvedgti_V1_19Jul17
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_fluxresl_gti -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Backspec_Faint_L20
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_backspectra_F_L20 -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_BackLC_Faint_L20
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_backlc_F_L20 -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Backspec_Faint_L10
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_backspectra_F_L10 -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_BackLC_Faint_L10
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_backlc_F_L10 -Wl,-lcurl
+
+cd $LAXPCSOFT/Make_rmslag_pha
+gfortran make_lag_rms_pha.f $CFITSIO $ZLIB_FLAGS -o laxpc_make_lagrms_pha -Wl,-lcurl
+
+cd $LAXPCSOFT/Fits_Merged_orb
+gfortran *.f $CFITSIO $ZLIB_FLAGS -o ../laxpc_bin/laxpc_make_merged_orbit -Wl,-lcurl
+
+chmod a+x ../laxpc_bin/*
